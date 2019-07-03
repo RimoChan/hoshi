@@ -76,6 +76,22 @@ def 目录识别(ori_img, name=None):
     return img_noko, 省略号组
 
 
+def 分离(省略号组, 行信息):
+    剩余行信息 = []
+    目录信息 = []
+    for i in 行信息:
+        for j in 省略号组:
+            d = (j['bottom'] - j['top']) // 2
+            if i['top'] > j['top']-d and i['bottom'] < j['bottom']+d:
+                目录信息.append(i)
+                break
+        else:
+            剩余行信息.append(i)
+    print(目录信息)
+    print(剩余行信息)
+    return 目录信息, 剩余行信息
+
+
 if __name__ == '__main__':
-    img = cv2.imread('./data/m1.png')
+    img = cv2.imread('./3/fadf2604-2a74-40fe-9ef1-70b35dc996ca_0-03.png')
     目录识别(img)

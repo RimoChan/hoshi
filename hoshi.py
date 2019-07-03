@@ -14,7 +14,7 @@ import 表格识别
 import 输出doc
 import 旋转矫正
 import 目录识别
-
+import 多线程
 from 缓存 import 缓存
 
 
@@ -22,21 +22,32 @@ pytesseract.pytesseract.tesseract_cmd = r"D:\Program Files\Tesseract-OCR-5.0-Alp
 logging.basicConfig(level=logging.DEBUG)
 
 
-def draw_box(img, left, top, width, height, level):
-    cv2.rectangle(img, (left, top), (left + width, top + height), (0, 211, 211), 5)
-
 
 class 星:
     def __init__(self, pdf_path=None, 黑度阈值=166):
         self.pdf文件名 = pdf_path
         self.黑度阈值 = 黑度阈值
 
+    def 拆包(self, pdf文件名, dpi):
+        图片组 = pdf2image.convert_from_path(pdf文件名, dpi=dpi, thread_count=3)
+        图片组 = [np.array(图) for 图 in 图片组]
+        return 图片组
+
+    @缓存
     def 龙(self, dpi=600):
         logging.debug('将pdf转为图片……')
-        图片组 = pdf2image.convert_from_path(self.pdf文件名, dpi=dpi, thread_count=4)
-        图片组 = [np.array(图) for 图 in 图片组]
+        图片组 = self.拆包(self.pdf文件名, dpi=dpi)
+        
         logging.debug('转word……')
-        页组 = [self.单图片提取(图) for 图 in tqdm.tqdm(图片组, ncols=60)]
+        
+        # 页组 = [self.单图片提取(图) for 图 in tqdm.tqdm(图片组, ncols=60)]
+        页组 = [None for _ in 图片组]
+        函数组 = []
+        for i,图 in enumerate(图片组):
+            def f(i=i, 图=图):
+                页组[i] = self.单图片提取(图)
+            函数组.append(f)
+        多线程.同步进行(3, 函数组)
         return 页组
 
     @缓存
@@ -63,20 +74,39 @@ class 星:
                     'top': i['top'],
                     'right': i['left'] + i['width'],
                     'bottom': i['top'] + i['height'],
-                    'width': i['width'],
-                    'height': i['height'],
                     '内容': [],
                 }
             if i['level'] == 5:
                 dv[i['h']]['内容'].append((i['text'], str(i['conf'])))
 
-        dv = [x for i, x in dv.items() if any([j != ' ' for j, _ in x['内容']])]
+        行信息 = []
+        for _, x in dv.items():
+            文字 = ''.join([i for i, _ in x['内容']])
+            if any([j != ' ' for j in 文字]):
+                行信息.append(x)
+        行信息 = sorted(行信息, key=lambda i: i['top'])
+        return self.行合并(行信息)
 
-        return dv
+    def 行合并(self, 行信息):
+        合并行信息 = []
+        for 行 in 行信息:
+            if not 合并行信息:
+                合并行信息.append(行)
+            elif 行['top'] < 合并行信息[-1]['bottom']:
+                if 行['right'] > 合并行信息[-1]['right']:
+                    合并行信息[-1]['内容'] = 合并行信息[-1]['内容'] + 行['内容']
+                    合并行信息[-1]['right'] = 行['right']
+                elif 行['left'] < 合并行信息[-1]['left']:
+                    合并行信息[-1]['内容'] = 行['内容'] + 合并行信息[-1]['内容']
+                    合并行信息[-1]['left'] = 行['left']
+            else:
+                合并行信息.append(行)
+        return 合并行信息
 
     def 行距提取(self, 行信息):
+        行信息 = sorted(行信息, key=lambda i: i['top'])
         行距组 = [后['top'] - 前['top'] for 前, 后 in zip(行信息[:-1], 行信息[1:])]
-        行高组 = [行['height'] for 行 in 行信息]
+        行高组 = [行['bottom'] - 行['top'] for 行 in 行信息]
         中位行高 = sorted(行高组)[len(行高组) // 2]
         有效行距组 = [i for i in 行距组 if i < 3 * 中位行高]
         return 有效行距组
@@ -132,7 +162,7 @@ class 星:
     def 去除文字(self, 图, 行信息):
         alice = 图.copy()
         for d in 行信息:
-            alice[d['top']:d['top'] + d['height'], d['left']:d['left'] + d['width']] = 255
+            alice[d['top']:d['bottom'], d['left']:d['right']] = 255
         return alice
 
     def 取残(self, alice):
@@ -146,7 +176,7 @@ class 星:
         ret, thresh = cv2.threshold(imgray, 252, 255, 1)
         cv2.imwrite('./alice0.png', thresh)
 
-        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         座标 = []
         for contour in contours:
             left, top = np.min(contour, axis=0).flatten()
@@ -158,15 +188,9 @@ class 星:
                 'right': right,
             })
         座标 = sorted(座标, key=lambda x: x['top'])
-        去重座标 = []
-        for i, d in enumerate(座标):
-            for d2 in 座标[:i]:
-                if d['bottom'] < d2['bottom'] and d['left'] > d2['left'] and d['right'] < d2['right']:
-                    break
-            else:
-                去重座标.append(d)
-        return 去重座标
+        return 座标
 
+    @缓存
     def 单图片提取(self, img):
         img[np.where(img > self.黑度阈值)] = 255
         r, c, _ = img.shape
@@ -174,14 +198,11 @@ class 星:
         img = 旋转矫正.自动旋转矫正(img)
 
         净图, 表格组 = 表格识别.分割表格(img)
-        print(表格组)
 
         净图, 省略号组 = 目录识别.目录识别(净图)
-
         ocr信息 = self.ocr(净图)
-
         行信息 = self.行切(ocr信息, 净图)
-
+        目录信息, 行信息 = 目录识别.分离(省略号组, 行信息)
         有效行距组 = self.行距提取(行信息)
         if len(有效行距组) >= 2:
             连接行距 = self.连接行距分析(有效行距组)
@@ -190,30 +211,46 @@ class 星:
 
         段落信息 = self.行连接(行信息, 连接行距, c)
 
-        alice = self.去除文字(净图, 行信息)
+        alice = self.去除文字(净图, 行信息+目录信息)
 
         图块组 = self.取残(alice)
 
         for 块 in 图块组:
             块['内容'] = img[块['top']:块['bottom'], 块['left']:块['right']]
             净图[块['top']:块['bottom'], 块['left']:块['right']] //= 2
-
+            
         for d in 行信息:
-            draw_box(净图, d['left'], d['top'], d['width'], d['height'], 4)
+            cv2.rectangle(净图, (d['left'], d['top']), (d['right'], d['bottom']), (0, 211, 211), 5)
+        for d in 目录信息:
+            cv2.rectangle(净图, (d['left'], d['top']), (d['right'], d['bottom']), (255, 66, 66), 5)
         cv2.imwrite('./ans.png', 净图)
 
         return {
+            '目录信息': 目录信息,
             '段落信息': 段落信息,
             '表格组': 表格组,
             '图块组': 图块组
         }
 
 
-# 页组 = 星('./data/SYT 6662.5-2014.pdf').龙(dpi=600)
+页组 = 星('./data/SYT 6662.5-2014.pdf').龙(dpi=600)
+print(len(页组))
+for i in 页组:
+    if i is None:
+        print(1)
+输出doc.输出('mae.docx', 页组)
+
+# @缓存
+# def 文件夹提取(路径):
+#     页组 = []
+#     for i in tqdm.tqdm(os.listdir(路径), ncols=60):
+#         img = cv2.imread(f'{路径}/{i}')
+#         页 = 星().单图片提取(img)
+#         页组.append(页)
+#     return 页组
+# 页组 = 文件夹提取('./3/')
 # 输出doc.输出('mae.docx', 页组)
 
-
-img = cv2.imread('./data/t5.png')
-页 = 星().单图片提取(img)
-
-输出doc.输出('mae.docx', [页])
+# img = cv2.imread('./data/f.png')
+# 页 = 星().单图片提取(img)
+# 输出doc.输出('mae.docx', [页])

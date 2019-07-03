@@ -8,6 +8,7 @@ from scipy.signal import argrelextrema
 import pytesseract
 
 from 缓存 import 缓存
+import util
 from util import erode, dilate
 
 
@@ -48,13 +49,9 @@ def 提取表格线(img):
     if len(img.shape) == 3:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     r, c = img.shape
-
-    img_bin = img.copy()
-    d = r // 1024 * 2 + 1
-    t = cv2.blur(img_bin, (d, d), 0)
-    img_bin[np.where(img_bin > t - 5)] = 255
-    img_bin[np.where(img_bin <= t - 5)] = 0
-
+    
+    img_bin = util.局部二值化(img, r // 1024 * 2 + 1)
+    # cv2.imwrite('bb.jpg', img_bin)
     img_bin = erode(img_bin, r // 1000, r // 1000)
     img_x = erode(dilate(img_bin, 1, r // 64), 1, r // 64)
     img_y = erode(dilate(img_bin, r // 64, 1), r // 64, 1)
@@ -63,6 +60,11 @@ def 提取表格线(img):
     img_y = 255 - img_y
 
     img_table = np.maximum(img_x, img_y)
+    contours = util.屑检测(img_table, (r/16)**2)
+    for cnt in contours:
+        img_x = cv2.drawContours(img_x, [cnt], -1, (0), -1)
+        img_y = cv2.drawContours(img_y, [cnt], -1, (0), -1)
+        img_table = cv2.drawContours(img_table, [cnt], -1, (0), -1)
 
     return img_x, img_y, img_table
 
@@ -70,29 +72,32 @@ def 提取表格线(img):
 def 定极线(img, axis):
     t = np.sum(img, axis=axis).astype(np.float64)
     l = len(t)
-    r = l // 512 * 2 + 1
+
+    满线能量 = img.shape[axis] * 255
+    t[np.where(t < 满线能量 // 32)] = 0
 
     t[np.where(t > 0)] += np.random.normal(1, 1, len(t[np.where(t > 0)]))
 
     t = np.reshape(t, (l, 1))
-    t = cv2.GaussianBlur(t, (1, r), 0)
+    t = cv2.GaussianBlur(t, (1, l // 512 * 2 + 1), 0)
     t = t.flatten()
     return argrelextrema(t, np.greater)[0]
 
 
-def 划定(img, img_table, lx, ly):
+def 划定(img, img_x, img_y, lx, ly):
     d = {}
-    r, c = img_table.shape
-    img_table = dilate(img_table, r // 512, r // 512)
+    r, c = img_x.shape
+    img_x = dilate(img_x, r // 256, r // 256)
+    img_y = dilate(img_y, r // 256, r // 256)
     llx = [0, *lx]
     lly = [0, *ly]
 
     for px, x in zip(llx[:-1], llx[1:]):
         for py, y in zip(lly[:-1], lly[1:]):
             d[x, y] = [False, False]
-            if img_table[px:x, y].mean() > 128:
+            if img_y[px:x, y].mean() > 128:
                 d[x, y][0] = True
-            if img_table[x, py:y].mean() > 128:
+            if img_x[x, py:y].mean() > 128:
                 d[x, y][1] = True
 
     for px, x in zip(llx[:-1], llx[1:]):
@@ -139,8 +144,10 @@ def 划定(img, img_table, lx, ly):
                             'right': w,
                         })
                         表 = 表格块组[-1]
-                        img[表['top']:表['bottom'], 表['left']:表['right']] = (img[表['top']:表['bottom'], 表['left']:表['right']] * 0.8).astype(np.uint8)
-                        img[表['top']:表['bottom'], 表['left']:表['right'], 2] = 255
+                        roi = img[lx[表['top']]:lx[表['bottom']], ly[表['left']]:ly[表['right']]]
+                        roi //= 5
+                        roi *= 4
+                        roi[:, :, 2] = 255
                     当前检测 = None
                     if t:
                         当前检测 = i
@@ -151,6 +158,7 @@ def 划定(img, img_table, lx, ly):
 
 @缓存
 def 最终提取(表格块组, d, ori_img, lx, ly):
+    r, c = ori_img.shape[:2]
     表格组 = []
     for 表格块 in 表格块组:
         该表格 = 表格([表格块['bottom'] - 表格块['top'], 表格块['right'] - 表格块['left']],
@@ -162,12 +170,15 @@ def 最终提取(表格块组, d, ori_img, lx, ly):
         }
         )
         表格组.append(该表格)
-        logging.debug('表格:', 表格块['top'], 表格块['bottom'], 表格块['left'], 表格块['right'])
         for x in range(表格块['bottom'] - 表格块['top']):
             for y in range(表格块['right'] - 表格块['left']):
                 ox = x + 表格块['top']
                 oy = y + 表格块['left']
+                该表格.格连接[x][y]
+                d[lx[ox], ly[oy + 1]][1]
+                d[lx[ox + 1], ly[oy]][0]
                 该表格.格连接[x][y] = not d[lx[ox], ly[oy + 1]][1], not d[lx[ox + 1], ly[oy]][0]
+
         for x in range(表格块['bottom'] - 表格块['top']):
             for y in range(表格块['right'] - 表格块['left']):
                 if 该表格.格范围(x, y) is not None:
@@ -176,9 +187,15 @@ def 最终提取(表格块组, d, ori_img, lx, ly):
                     xx, yy = 该表格.格范围(x, y)
                     oxx = xx + 表格块['top']
                     oyy = yy + 表格块['left']
-                    切图 = ori_img[lx[ox] + 10:lx[oxx + 1] - 10, ly[oy] + 10:ly[oyy + 1] - 10]
-                    文字 = pytesseract.image_to_string(切图, lang='chi_sim+eng', config='--psm 7 --oem 1')
-                    该表格.格内容[x][y] = 文字
+
+                    dt = r // 512
+                    切图 = ori_img[lx[ox] + dt:lx[oxx + 1] - dt, ly[oy] + dt:ly[oyy + 1] - dt]
+                    if 0 in 切图.shape or 切图.mean() > 254:
+                        该表格.格内容[x][y] = ''
+                    else:
+                        文字 = pytesseract.image_to_string(切图, lang='chi_sim+eng', config='--psm 7 --oem 1')
+                        # 文字 = pytesseract.image_to_data(切图, lang='chi_sim+eng', config='--psm 7 --oem 1')
+                        该表格.格内容[x][y] = 文字
 
     return 表格组
 
@@ -197,34 +214,37 @@ def 分割表格(ori_img, name=None):
     for y in lx:
         cv2.rectangle(img, (0, y), (c, y), (0, 255, 0), 3)
 
-    表格块组, 线信息 = 划定(img, img_table, lx, ly)
-    表格组 = 最终提取(表格块组, 线信息, ori_img, lx, ly)
+    表格块组, 线信息 = 划定(img, img_x, img_y, lx, ly)
+
+    if name:
+        cv2.imwrite(f'./temp/{name}_a.png', img)
+        # cv2.imwrite(f'./temp/{name}_noko.png', img_noko)
+        # cv2.imwrite(f'./temp/{name}_x.png', img_x)
+        # cv2.imwrite(f'./temp/{name}_y.png', img_y)
+        cv2.imwrite(f'./temp/{name}_t.png', img_table)
+
+    # 表格组 = 最终提取(表格块组, 线信息, ori_img, lx, ly)
+    表格组 = []
 
     img_noko = ori_img.copy()
     for 表格 in 表格组:
         d = r // 512
         位 = 表格.原位置
-        print(位)
         img_noko[位['top'] - d:位['bottom'] + d, 位['left'] - d:位['right'] + d] = 255
-
-    if name:
-        cv2.imwrite(f'./temp/{name}_a.png', img)
-        # cv2.imwrite(f'./temp/{name}_x.png', img_x)
-        cv2.imwrite(f'./temp/{name}_noko.png', img_noko)
-        # cv2.imwrite(f'./temp/{name}_y.png', img_y)
-        # cv2.imwrite(f'./temp/{name}_t.png', img_table)
 
     return img_noko, 表格组
 
 
 if __name__ == '__main__':
-    # for i in tqdm.tqdm(os.listdir('./tb'), ncols=55):
-    i = '3.png'
-    print(i)
-    img = cv2.imread(f'./tb/{i}')
-    黑度阈值 = 166
-    img[np.where(img > 黑度阈值)] = 255
+    logging.basicConfig(level=logging.DEBUG)
+    # for i in ['0.png']:
+    for i in tqdm.tqdm(os.listdir('./tb'), ncols=55):
+        print(i)
+        img = cv2.imread(f'./tb/{i}')
+        黑度阈值 = 166
+        img[np.where(img > 黑度阈值)] = 255
 
-    img_noko, 表格组 = 分割表格(img, i)
-    print(表格组)
-    print('done!')
+        import 旋转矫正
+        img = 旋转矫正.自动旋转矫正(img)
+        img_noko, 表格组 = 分割表格(img, i)
+        print(表格组)

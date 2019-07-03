@@ -1,11 +1,12 @@
 import os
 import hashlib
-import cloudpickle as pickle
+import pickle
+
 
 def 缓存(f):
     def 新f(*li, **d):
         md5 = hashlib.md5(pickle.dumps((li, d))).hexdigest()
-        缓存文件名 = f'_cache/[{f.__name__}]{md5}.pkl'
+        缓存文件名 = f'_cache/[{f.__module__}.{f.__name__}]{md5}.pkl'
         if os.path.isfile(缓存文件名):
             with open(缓存文件名, 'rb') as file:
                 return pickle.load(file)
