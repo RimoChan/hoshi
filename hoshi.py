@@ -1,6 +1,4 @@
 import logging
-import pickle
-import hashlib
 import os
 
 import tqdm
@@ -12,6 +10,7 @@ from sklearn.cluster import KMeans
 
 import 表格识别
 import 输出doc
+import 文字提取
 import 旋转矫正
 import 目录识别
 import 多线程
@@ -49,59 +48,6 @@ class 星:
             函数组.append(f)
         多线程.同步进行(3, 函数组)
         return 页组
-
-    @缓存
-    def ocr(self, img):
-        ocr信息 = pytesseract.image_to_data(img, lang='chi_sim', output_type='dict')
-        return ocr信息
-
-    def 行切(self, ocr信息, img=None):
-        a = []
-        for n in range(len(ocr信息['level'])):
-            a.append({})
-            now = a[-1]
-            for i, x in ocr信息.items():
-                now[i] = x[n]
-            now['h'] = (now['block_num'], now['par_num'], now['line_num'])
-
-        dv = {}
-        for i in a:
-            if i['level'] <= 3:
-                None
-            if i['level'] == 4:
-                dv[i['h']] = {
-                    'left': i['left'],
-                    'top': i['top'],
-                    'right': i['left'] + i['width'],
-                    'bottom': i['top'] + i['height'],
-                    '内容': [],
-                }
-            if i['level'] == 5:
-                dv[i['h']]['内容'].append((i['text'], str(i['conf'])))
-
-        行信息 = []
-        for _, x in dv.items():
-            文字 = ''.join([i for i, _ in x['内容']])
-            if any([j != ' ' for j in 文字]):
-                行信息.append(x)
-        行信息 = sorted(行信息, key=lambda i: i['top'])
-        return self.行合并(行信息)
-
-    def 行合并(self, 行信息):
-        合并行信息 = []
-        for 行 in 行信息:
-            if not 合并行信息:
-                合并行信息.append(行)
-            elif 行['top'] < 合并行信息[-1]['bottom']:
-                if 行['right'] > 合并行信息[-1]['right']:
-                    合并行信息[-1]['内容'] = 合并行信息[-1]['内容'] + 行['内容']
-                    合并行信息[-1]['right'] = 行['right']
-                elif 行['left'] < 合并行信息[-1]['left']:
-                    合并行信息[-1]['内容'] = 行['内容'] + 合并行信息[-1]['内容']
-                    合并行信息[-1]['left'] = 行['left']
-            else:
-                合并行信息.append(行)
-        return 合并行信息
 
     def 行距提取(self, 行信息):
         行信息 = sorted(行信息, key=lambda i: i['top'])
@@ -200,8 +146,8 @@ class 星:
         净图, 表格组 = 表格识别.分割表格(img)
 
         净图, 省略号组 = 目录识别.目录识别(净图)
-        ocr信息 = self.ocr(净图)
-        行信息 = self.行切(ocr信息, 净图)
+        ocr信息 = 文字提取.ocr(净图)
+        行信息 = 文字提取.行切(ocr信息, 净图)
         目录信息, 行信息 = 目录识别.分离(省略号组, 行信息)
         有效行距组 = self.行距提取(行信息)
         if len(有效行距组) >= 2:

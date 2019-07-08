@@ -7,6 +7,7 @@ import numpy as np
 from scipy.signal import argrelextrema
 import pytesseract
 
+import 文字提取
 from 缓存 import 缓存
 import util
 from util import erode, dilate
@@ -156,7 +157,6 @@ def 划定(img, img_x, img_y, lx, ly):
     return 表格块组, 线信息
 
 
-@缓存
 def 最终提取(表格块组, d, ori_img, lx, ly):
     r, c = ori_img.shape[:2]
     表格组 = []
@@ -193,8 +193,7 @@ def 最终提取(表格块组, d, ori_img, lx, ly):
                     if 0 in 切图.shape or 切图.mean() > 254:
                         该表格.格内容[x][y] = ''
                     else:
-                        文字 = pytesseract.image_to_string(切图, lang='chi_sim+eng', config='--psm 7 --oem 1')
-                        # 文字 = pytesseract.image_to_data(切图, lang='chi_sim+eng', config='--psm 7 --oem 1')
+                        文字 = 文字提取.单行ocr(切图)
                         该表格.格内容[x][y] = 文字
 
     return 表格组
@@ -223,8 +222,8 @@ def 分割表格(ori_img, name=None):
         # cv2.imwrite(f'./temp/{name}_y.png', img_y)
         cv2.imwrite(f'./temp/{name}_t.png', img_table)
 
-    # 表格组 = 最终提取(表格块组, 线信息, ori_img, lx, ly)
-    表格组 = []
+    表格组 = 最终提取(表格块组, 线信息, ori_img, lx, ly)
+    # 表格组 = []
 
     img_noko = ori_img.copy()
     for 表格 in 表格组:
@@ -237,9 +236,9 @@ def 分割表格(ori_img, name=None):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    # for i in ['0.png']:
+    # for i in ['q.png']:
     for i in tqdm.tqdm(os.listdir('./tb'), ncols=55):
-        print(i)
+        # print(i)
         img = cv2.imread(f'./tb/{i}')
         黑度阈值 = 166
         img[np.where(img > 黑度阈值)] = 255
