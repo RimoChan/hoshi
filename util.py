@@ -19,10 +19,15 @@ def 局部二值化(img, d):
 
 
 def erode(img, x, y):
+    # 为什么0的时候opencv会操作？？？
+    if 0 in (x,y):
+        return img
     kernel = np.ones((int(x), int(y)), np.uint8)
     return cv2.erode(img, kernel)
 
 
 def dilate(img, x, y):
+    if 0 in (x,y):
+        return img
     kernel = np.ones((int(x), int(y)), np.uint8)
     return cv2.dilate(img, kernel)
