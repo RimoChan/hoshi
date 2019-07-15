@@ -8,8 +8,8 @@ import numpy as np
 from scipy.signal import argrelextrema
 import pytesseract
 
-import util
-from 缓存 import 缓存
+from . import util
+from .OCR引擎.缓存 import 缓存
 
 
 def 距离(a, b):
@@ -39,7 +39,6 @@ def 检测旋转角(img, img_show):
     r, c = img.shape
 
     img_bin = img.copy()
-    print(r // 1024 * 2 + 1)
     img_bin = 255 - util.局部二值化(img, r // 512 * 2 + 1)
     # cv2.imwrite('bin.jpg', img_bin)
     

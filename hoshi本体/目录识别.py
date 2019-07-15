@@ -8,7 +8,7 @@ import numpy as np
 from scipy.signal import argrelextrema
 import pytesseract
 
-import util
+from . import util
 
 
 def 检测省略号(img_bin, show_img):
@@ -87,8 +87,6 @@ def 分离(省略号组, 行信息):
                 break
         else:
             剩余行信息.append(i)
-    print(目录信息)
-    print(剩余行信息)
     return 目录信息, 剩余行信息
 
 

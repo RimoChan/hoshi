@@ -6,8 +6,8 @@ from docx.oxml.ns import qn
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-import 表格识别
-import 文字提取
+from . import 表格识别
+from . import 文字提取
 
 
 def 排序键(x):
@@ -33,22 +33,20 @@ def 输出页(document, 目录信息, 段落信息, 表格组, 图块组):
         
         elif x in 目录信息:
             段落 = x
-            前 = 文字提取.组句(x['内容'][:-1])
-            后 = x['内容'][-1][0]
-            document.add_paragraph(f'{前} ---------- {后}')
+            document.add_paragraph(f'(目录){x["内容"]}')
             
         elif x in 段落信息:
             段落 = x
             if 段落['样式'] == '居中':
                 总字 = '\n'.join([
-                    文字提取.组句(i['内容'])
+                    i['内容']
                     for i in 段落['行组']
                 ])
                 document.add_paragraph(总字)
                 document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
             else:
                 总字 = '\n'.join([
-                    int(i['缩进'] / ((i['bottom']-i['top']) * 2)) * ' ' + 文字提取.组句(i['内容'])
+                    int(i['缩进'] / ((i['bottom']-i['top']) * 2)) * ' ' + i['内容']
                     for i in 段落['行组']
                 ])
                 document.add_paragraph(总字)

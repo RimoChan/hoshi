@@ -7,10 +7,9 @@ import numpy as np
 from scipy.signal import argrelextrema
 import pytesseract
 
-import 文字提取
-from 缓存 import 缓存
-import util
-from util import erode, dilate
+from . import 文字提取
+from . import util
+from .util import erode, dilate
 
 
 class 表格:
@@ -193,13 +192,13 @@ def 最终提取(表格块组, d, ori_img, lx, ly):
                     if 0 in 切图.shape or 切图.mean() > 254:
                         该表格.格内容[x][y] = ''
                     else:
-                        文字 = 文字提取.单行ocr(切图)
+                        文字 = 文字提取.单行OCR(切图)
                         该表格.格内容[x][y] = 文字
 
     return 表格组
 
 
-def 分割表格(ori_img, name=None):
+def 位置判定(ori_img, name=None):
     img = ori_img.copy()
     r, c = img.shape[:2]
 
@@ -214,14 +213,18 @@ def 分割表格(ori_img, name=None):
         cv2.rectangle(img, (0, y), (c, y), (0, 255, 0), 3)
 
     表格块组, 线信息 = 划定(img, img_x, img_y, lx, ly)
-
     if name:
         cv2.imwrite(f'./temp/{name}_a.png', img)
-        # cv2.imwrite(f'./temp/{name}_noko.png', img_noko)
+        cv2.imwrite(f'./temp/{name}_t.png', img_table)
         # cv2.imwrite(f'./temp/{name}_x.png', img_x)
         # cv2.imwrite(f'./temp/{name}_y.png', img_y)
-        cv2.imwrite(f'./temp/{name}_t.png', img_table)
+    return 表格块组, lx, ly, 线信息
 
+
+def 分割表格(ori_img, name=None):
+    r, c = ori_img.shape[:2]
+    表格块组, lx, ly, 线信息 = 位置判定(ori_img)
+        
     表格组 = 最终提取(表格块组, 线信息, ori_img, lx, ly)
     # 表格组 = []
 
@@ -230,7 +233,10 @@ def 分割表格(ori_img, name=None):
         d = r // 512
         位 = 表格.原位置
         img_noko[位['top'] - d:位['bottom'] + d, 位['left'] - d:位['right'] + d] = 255
-
+        
+    if name:
+        cv2.imwrite(f'./temp/{name}_noko.png', img_noko)
+        
     return img_noko, 表格组
 
 
