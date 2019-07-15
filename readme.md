@@ -2,6 +2,7 @@
 
 将AV画质的pdf转成word的道具，并尽可能保持格式不变。
 
+
 ## 功能
 
 -   自动旋转矫正
@@ -14,14 +15,6 @@
 
 -   图片识别
 
-## 依赖
-
-python 3.6  
-tesseract-ocr
-
-```
-pip install tqdm numpy scipy scikit-learn pdf2image pytesseract opencv-python cloudpickle
-```
 
 ## 使用方法
 
@@ -64,7 +57,7 @@ pip install tqdm numpy scipy scikit-learn pdf2image pytesseract opencv-python cl
 hoshi使用了基于轮廓检测的方法来检测旋转角度。
 
 <p align="center">
-<img src='./文档/援交/旋转矫正2.jpg'>
+<img src='./文档/援交/旋转矫正2.jpg'/>
 (各个文字成为独立的轮廓，有些文字可成为多个轮廓)
 </p>
 
@@ -72,7 +65,7 @@ hoshi使用了基于轮廓检测的方法来检测旋转角度。
 去除远大于平均大小的轮廓(它们很可能不是文字)。
 
 <p align="center">
-<img src='./文档/援交/旋转矫正3.jpg'>
+<img src='./文档/援交/旋转矫正3.jpg'/>
 (轮廓合并后，每种颜色代表一个轮廓)
 </p>
 
@@ -88,7 +81,7 @@ hoshi使用了基于轮廓检测的方法来检测旋转角度。
 hoshi采用了横纵开闭运算的方法检测表格线。
 
 <p align="center">
-<img src='./文档/援交/表格提取.jpg'>
+<img src='./文档/援交/表格提取.jpg'/>
 (黄线为横向提取结果，蓝线为纵向提取结果)
 </p>
 
@@ -98,7 +91,7 @@ hoshi采用了横纵开闭运算的方法检测表格线。
 这个操作之后可能留下少量杂质，可根据面积大小将其剔除。
 
 <p align="center">
-<img src='./文档/援交/表格提取2.jpg'>
+<img src='./文档/援交/表格提取2.jpg'/>
 (黄线为极值线，蓝线为真实表格线)
 </p>
 
@@ -115,7 +108,7 @@ OCR引擎不能直接识别出目录的形态，直接识别容易跑出乱七�
 目录的主要成分是省略号，因此目前的思路是检测过长的省略号(真的没问题吗)。
 
 <p align="center">
-<img src='./文档/援交/目录识别.jpg'>
+<img src='./文档/援交/目录识别.jpg'/>
 (小点被蓝色标出，膨胀区域为白色)
 </p>
 
@@ -133,7 +126,7 @@ OCR引擎不能直接识别出目录的形态，直接识别容易跑出乱七�
 文字检测可以调用tesseract(本地)或百度(在线)接口，取决于调用时传递的OCR引擎类型。
 
 <p align="center">
-<img src='./文档/援交/文字识别.jpg'>
+<img src='./文档/援交/文字识别.jpg'/>
 (不是我写的，识别不准我能怎么办……)
 </p>
 
@@ -153,6 +146,15 @@ pdf中的图片千奇百怪，很难有合适的方法分离出来，因此采�
 ![图片分割3.jpg](./文档/援交/图片分割3.jpg)
 
 对能量图进行二值化，并进行轮廓检测，得到每个检测到的区域矩形外框，逐个截取即可得到对应图片。
+
+## 依赖
+
+python 3.6  
+tesseract-ocr
+
+```
+pip install tqdm numpy scipy scikit-learn pdf2image pytesseract opencv-python cloudpickle
+```
 
 ## 赞助
 
