@@ -9,6 +9,7 @@ from scipy.signal import argrelextrema
 import pytesseract
 
 from . import util
+from . import image_logging
 from .OCR引擎.缓存 import 缓存
 
 
@@ -40,8 +41,7 @@ def 检测旋转角(img, img_show):
 
     img_bin = img.copy()
     img_bin = 255 - util.局部二值化(img, r // 512 * 2 + 1)
-    # cv2.imwrite('bin.jpg', img_bin)
-    
+
     圆组 = []
     contours, hierarchy = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = [cnt for cnt in contours if cv2.contourArea(cnt) > (r / 2048)**2]  # 去屑
@@ -73,12 +73,12 @@ def 检测旋转角(img, img_show):
             权 = cv2.contourArea(cnt)**2
             所有角度.append(权 * 角强 * 角)
             所有权.append(权 * 角强)
-            
-    if len(所有角度)<10:
+
+    if len(所有角度) < 10:
         logging.warning('没有足够的文字样本，检测不出旋转角')
         return 0
-        
-    cv2.imwrite('b.jpg', img_b)
+
+    image_logging.write('ro', b=img_b)
     return sum(所有角度) / sum(所有权)
 
 

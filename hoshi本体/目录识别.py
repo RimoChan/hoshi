@@ -9,6 +9,7 @@ from scipy.signal import argrelextrema
 import pytesseract
 
 from . import util
+from . import image_logging
 
 
 def 检测省略号(img_bin, show_img):
@@ -52,8 +53,7 @@ def 检测省略号(img_bin, show_img):
                 'right': int(x + w - 点距),
             }
             省略号组.append(范围)
-    cv2.imwrite('show.jpg', show_img)
-    cv2.imwrite('b.jpg', img_b)
+    image_logging.write('ml', show=show_img, b=img_b)
     return 省略号组
 
 

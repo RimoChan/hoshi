@@ -9,8 +9,8 @@ import pytesseract
 
 from . import 文字提取
 from . import util
+from . import image_logging
 from .util import erode, dilate
-
 
 class 表格:
     def __init__(self, 尺寸, 原位置):
@@ -49,9 +49,8 @@ def 提取表格线(img):
     if len(img.shape) == 3:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     r, c = img.shape
-    
+
     img_bin = util.局部二值化(img, r // 1024 * 2 + 1)
-    # cv2.imwrite('bb.jpg', img_bin)
     img_bin = erode(img_bin, r // 1000, r // 1000)
     img_x = erode(dilate(img_bin, 1, r // 64), 1, r // 64)
     img_y = erode(dilate(img_bin, r // 64, 1), r // 64, 1)
@@ -60,7 +59,7 @@ def 提取表格线(img):
     img_y = 255 - img_y
 
     img_table = np.maximum(img_x, img_y)
-    contours = util.屑检测(img_table, (r/16)**2)
+    contours = util.屑检测(img_table, (r / 16)**2)
     for cnt in contours:
         img_x = cv2.drawContours(img_x, [cnt], -1, (0), -1)
         img_y = cv2.drawContours(img_y, [cnt], -1, (0), -1)
@@ -213,18 +212,17 @@ def 位置判定(ori_img, name=None):
         cv2.rectangle(img, (0, y), (c, y), (0, 255, 0), 3)
 
     表格块组, 线信息 = 划定(img, img_x, img_y, lx, ly)
-    if name:
-        cv2.imwrite(f'./temp/{name}_a.png', img)
-        cv2.imwrite(f'./temp/{name}_t.png', img_table)
-        # cv2.imwrite(f'./temp/{name}_x.png', img_x)
-        # cv2.imwrite(f'./temp/{name}_y.png', img_y)
+
+    image_logging.write('tb', a=img, t=img_table)
+    # image_logging.write('tb', a=img, t=img_table, x=img_x, y=img_y)
+
     return 表格块组, lx, ly, 线信息
 
 
 def 分割表格(ori_img, name=None):
     r, c = ori_img.shape[:2]
     表格块组, lx, ly, 线信息 = 位置判定(ori_img)
-        
+
     表格组 = 最终提取(表格块组, 线信息, ori_img, lx, ly)
     # 表格组 = []
 
@@ -233,10 +231,9 @@ def 分割表格(ori_img, name=None):
         d = r // 512
         位 = 表格.原位置
         img_noko[位['top'] - d:位['bottom'] + d, 位['left'] - d:位['right'] + d] = 255
-        
-    if name:
-        cv2.imwrite(f'./temp/{name}_noko.png', img_noko)
-        
+
+    image_logging.write('tb', noko=img_noko)
+
     return img_noko, 表格组
 
 

@@ -14,6 +14,7 @@ from . import 旋转矫正
 from . import 目录识别
 from . import 多线程
 from . import pdf拆包
+from . import image_logging
 from .OCR引擎.缓存 import 缓存
 
 
@@ -112,7 +113,8 @@ class 星:
 
         imgray = cv2.blur(imgray, (d, d), 0)
         ret, thresh = cv2.threshold(imgray, 252, 255, 1)
-        cv2.imwrite('./alice0.png', thresh)
+        
+        image_logging.write('main', thresh=thresh)
 
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         座标 = []
@@ -159,7 +161,8 @@ class 星:
             cv2.rectangle(净图, (d['left'], d['top']), (d['right'], d['bottom']), (0, 211, 211), 5)
         for d in 目录信息:
             cv2.rectangle(净图, (d['left'], d['top']), (d['right'], d['bottom']), (255, 66, 66), 5)
-        cv2.imwrite('./ans.png', 净图)
+            
+        image_logging.write('main', clean=净图)
 
         return {
             '目录信息': 目录信息,
