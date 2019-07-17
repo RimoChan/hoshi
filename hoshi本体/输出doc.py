@@ -1,6 +1,7 @@
 import logging
 
 import cv2
+import numpy as np
 from docx import Document
 from docx.oxml.ns import qn
 from docx.shared import Pt, Inches
@@ -16,9 +17,9 @@ def 排序键(x):
     return x['top']
 
 
-def 输出页(document, 目录信息, 段落信息, 表格组, 图块组):
+def 输出页(document, 目录信息, 段落信息, 表格组, 图块组, dpi):
     for i, x in enumerate(sorted(段落信息 + 表格组 + 图块组 + 目录信息, key=lambda i: 排序键(i))):
-        
+
         if x in 表格组:
             table = document.add_table(rows=x.尺寸[0], cols=x.尺寸[1], style='Table Grid')
             document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -30,45 +31,46 @@ def 输出页(document, 目录信息, 段落信息, 表格组, 图块组):
                     if w and w != (i, j):
                         table.cell(i, j).merge(table.cell(*w))
             document.add_paragraph('')
-        
+
         elif x in 目录信息:
             段落 = x
             document.add_paragraph(f'(目录){x["内容"]}')
-            
+
         elif x in 段落信息:
             段落 = x
+            p = document.add_paragraph()
             if 段落['样式'] == '居中':
-                总字 = '\n'.join([
-                    i['内容']
-                    for i in 段落['行组']
-                ])
-                document.add_paragraph(总字)
-                document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                for i in 段落['行组']:
+                    行高 = i['bottom'] - i['top']
+                    run = p.add_run(i['内容'] + '\n')
+                    字体尺寸 = round(行高 / dpi * 72)
+                    run.font.size = Pt(字体尺寸)
             else:
-                总字 = '\n'.join([
-                    int(i['缩进'] / ((i['bottom']-i['top']) * 2)) * ' ' + i['内容']
-                    for i in 段落['行组']
-                ])
-                document.add_paragraph(总字)
-                
+                for i in 段落['行组']:
+                    行高 = i['bottom'] - i['top']
+                    run = p.add_run(int(i['缩进'] / (行高 * 2)) * ' ' + i['内容'] + '\n')
+                    字体尺寸 = round(行高 / dpi * 72)
+                    run.font.size = Pt(字体尺寸)
+
         elif x in 图块组:
             表 = x
             cv2.imwrite(f'./_temp/_.jpg', 表['内容'])
             document.add_picture(f'./_temp/_.jpg', width=Inches((表['right'] - 表['left']) / 600))
             document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
         else:
-            0/0
+            0 / 0
 
     document.add_page_break()
 
 
-def 输出(文件名, 页组):
+def 输出(文件名, 页组, dpi):
     document = Document()
     document.styles['Normal'].font.name = '宋体'
     document.styles['Normal'].font.size = Pt(8)
     document.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
 
     for 页 in 页组:
-        输出页(document, 页['目录信息'], 页['段落信息'], 页['表格组'], 页['图块组'])
+        输出页(document, 页['目录信息'], 页['段落信息'], 页['表格组'], 页['图块组'], dpi=dpi)
 
     document.save(文件名)
