@@ -16,7 +16,7 @@ def 预处理(img, 明度阈值):
     屑 = util.屑检测(255 - img_bin, 面积阈值=r * c // 10**6)
 
     test_img = cv2.drawContours(img.copy(), 屑, -1, (255, 255, 255), -1)
-    test_img = cv2.blur(test_img, (r // 256, r // 256), 0)
+    test_img = cv2.blur(test_img, (r // 64, r // 256), 0)
 
     坏屑 = []
     for cnt in 屑:

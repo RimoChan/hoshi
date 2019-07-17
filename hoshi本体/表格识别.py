@@ -188,7 +188,7 @@ def 最终提取(表格块组, d, ori_img, lx, ly):
 
                     dt = r // 512
                     切图 = ori_img[lx[ox] + dt:lx[oxx + 1] - dt, ly[oy] + dt:ly[oyy + 1] - dt]
-                    if 0 in 切图.shape or 切图.mean() > 254:
+                    if 0 in 切图.shape:
                         该表格.格内容[x][y] = ''
                     else:
                         文字 = 文字提取.单行OCR(切图)
