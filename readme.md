@@ -18,17 +18,18 @@
 
 ## 使用方法
 
-暂时没有GUI，你可以从`hoshi_api.py`中挑选接口来调用。
+可以从`hoshi_api.py`中挑选接口来调用。  
+GUI还在开发中，虽然我的前端水平很糟糕……
 
 主要功能: 
 
 + `pdf_to_word(pdf_file_name, word_file_name, brightness_threshold=166, dpi=600, thread_count=3)`  
     将pdf文件转成docx。  
-    可以指定亮度阈值(用于去除水印)，DPI(越高越准)，线程数(金钱就是力量)。
-
-+ `image_to_word(image_file_name, word_file_name, brightness_threshold=166)`  
+    可以指定亮度阈值(用于去除水印)，解包DPI(越高越准)，线程数(金钱就是力量)。
+    
++ `image_to_word(image_file_name, word_file_name, brightness_threshold=166, dpi=600)`  
     将单张图片转成docx。  
-    可以指定亮度阈值(用于去除水印)。
+    可以指定亮度阈值(用于去除水印)，DPI(用于计算文档实际尺寸)。
 
 特典(?)功能: 
 
@@ -53,7 +54,7 @@
 为了让接下来的步骤能正常工作，先对文档进行一次全局二值化和局部二值化。
 
 全局二值化的目的是保证扫描件的背景颜色为白色(255)，并去除水印。在这个步骤只将高于阈值的部分调整为白色。  
-这个阈值需要根据文档里水印强度手动决定，当然原本没有水印就最好了。
+这个阈值暂时不能自动检测，需要根据文档的水印强度手动决定，当然原本没有水印就最好了。
 
 ![](./文档/援交/预处理.jpg)
 
@@ -149,6 +150,11 @@ OCR引擎不能直接识别出目录的形态，直接识别容易跑出乱七�
 (不是我写的，识别不准我能怎么办……)
 </p>
 
+虽然我尽可能做了适配，但是两个引擎各有各的偏见，并不能无缝切换。
+
+之前大体上是以tesseract的OCR为基础做的，说实话我对这个引擎的正确率不满意，无论在字的定位还是字的识别上，都有明显的漏检误检。用百度的接口就好很多(当然要收钱)。  
+我想，接下来干脆全部换成百度的接口算了，虽然一页大概4分钱左右，不过能把校对的钱省下来就不亏吧……
+
 在得到对应的行信息后，为了组成段落和文档，将行距进行K-means聚类(其实大津算法就够了)，将得到的数值较小的类别当作段内行间间距，较大的类别当作段间间距，即可将其分割成数个段落。  
 之后在段内，根据上行和下行的位置关系等，尽可能上下地并为一个无换行的行。
 
@@ -176,7 +182,7 @@ python 3.6
 tesseract-ocr
 
 ```
-pip install tqdm numpy scipy scikit-learn pdf2image pytesseract opencv-python cloudpickle
+pip install tqdm numpy scipy scikit-learn pdf2image pytesseract opencv-python python-docx
 ```
 
 ## 赞助
