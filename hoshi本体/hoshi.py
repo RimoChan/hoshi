@@ -19,8 +19,6 @@ from . import image_logging
 from .OCR引擎.缓存 import 缓存
 
 
-pytesseract.pytesseract.tesseract_cmd = r"D:\Program Files\Tesseract-OCR-5.0-Alpha\tesseract.exe"
-
 
 class 星:
     def __init__(self, pdf_path=None, 明度阈值=166):
