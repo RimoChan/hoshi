@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from sklearn.cluster import KMeans
 
+from . import 预处理
 from . import 表格识别
 from . import 输出doc
 from . import 文字提取
@@ -109,10 +110,10 @@ class 星:
         ret, imgray = cv2.threshold(imgray, 127, 255, 0)
 
         r, c = imgray.shape
-        d = r // 64 * 2 + 1
+        d = r // 50 * 2 + 1
 
         imgray = cv2.blur(imgray, (d, d), 0)
-        ret, thresh = cv2.threshold(imgray, 252, 255, 1)
+        ret, thresh = cv2.threshold(imgray, 253, 255, 1)
         
         image_logging.write('main', thresh=thresh)
 
@@ -131,9 +132,10 @@ class 星:
         return 座标
 
     def 单图片提取(self, img):
-        img[np.where(img > self.明度阈值)] = 255
         r, c, _ = img.shape
-
+        
+        img = 预处理.预处理(img, 明度阈值=self.明度阈值)
+        
         img = 旋转矫正.自动旋转矫正(img)
 
         净图, 表格组 = 表格识别.分割表格(img)
@@ -171,18 +173,3 @@ class 星:
             '图块组': 图块组
         }
 
-
-# @缓存
-# def 文件夹提取(路径):
-#     页组 = []
-#     for i in tqdm.tqdm(os.listdir(路径), ncols=60):
-#         img = cv2.imread(f'{路径}/{i}')
-#         页 = 星().单图片提取(img)
-#         页组.append(页)
-#     return 页组
-# 页组 = 文件夹提取('./3/')
-# 输出doc.输出('mae.docx', 页组)
-
-# img = cv2.imread('./data/f.png')
-# 页 = 星().单图片提取(img)
-# 输出doc.输出('mae.docx', [页])
