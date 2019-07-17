@@ -1,5 +1,7 @@
 import logging
 
+import cv2
+import numpy as np
 from aip import AipOcr
 
 from .缓存 import 缓存
@@ -27,6 +29,15 @@ class 百度OCR:
         })
         return result
 
+    def 收缩(self, 图, 行信息):
+        for i in 行信息:
+            roi = img[i['top']:i['bottom'], i['left']:i['right'], 0]
+            有效点x = np.where(roi.mean(axis=1) < 254.9)[0]
+            有效点y = np.where(roi.mean(axis=0) < 254.9)[0]
+            i['top'], i['bottom'] = i['top'] + 有效点x.min(), i['top'] + 有效点x.max() + 1
+            i['left'], i['right'] = i['left'] + 有效点y.min(), i['left'] + 有效点y.max() + 1
+        return 行信息
+
     def 全页识别(self, 图):
         原始ocr信息 = self._全页识别(图)
         words_result = 原始ocr信息['words_result']
@@ -39,7 +50,7 @@ class 百度OCR:
                 'bottom': i['location']['top'] + i['location']['height'],
                 '内容': i['words']
             })
-        return 新信息
+        return self.收缩(图, 新信息)
 
     def 单行识别(self, 图):
         原始ocr信息 = self._单行识别(图)
@@ -51,12 +62,13 @@ class 百度OCR:
         else:
             return ''
 
-
-if __name__ == '__main__':
-    import cv2
-    图 = cv2.imread('f.png')
-    result = 百度OCR().全页识别(图)
-    print(result)
-    result = 百度OCR().单行识别(图)
-    print(result)
-    cv2.imwrite('_f.png', 图)
+if __name__=='__main__':
+    img = cv2.imread('2.png')
+    
+    a = 百度OCR().全页识别(img)
+    
+    for i in a:
+        img[i['top']:i['bottom'], i['left']:i['right']] //= 2
+        print(i['内容'])
+    
+    cv2.imwrite('baidu_2.png', img)
