@@ -9,12 +9,13 @@ import pickle
 def 缓存(f):
     def 新f(*li, **d):
         md5 = hashlib.md5(pickle.dumps((li, d))).hexdigest()
-        缓存文件名 = f'{此處}/_cache/[{f.__module__}~{f.__qualname__}]{md5}.pkl'
+        缓存文件名 = f'{此處}/_cache/[{f.__module__}~{f.__qualname__}]/{md5}.pkl'
         if os.path.isfile(缓存文件名):
             with open(缓存文件名, 'rb') as file:
                 return pickle.load(file)
         else:
             缓存值 = f(*li, **d)
+            os.makedirs(f'{此處}/_cache/[{f.__module__}~{f.__qualname__}]', exist_ok=True)
             with open(缓存文件名, 'wb') as file:
                 pickle.dump(缓存值, file)
             return 缓存值
