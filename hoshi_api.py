@@ -17,11 +17,11 @@ def pdf_to_word(pdf_file_name, word_file_name, brightness_threshold=166, dpi=600
     hoshi本体.输出doc.输出(word_file_name, 页组, dpi=dpi)
 
 
-def image_to_word(image_file_name, word_file_name, brightness_threshold=166):
+def image_to_word(image_file_name, word_file_name, brightness_threshold=166, dpi=600):
     image_logging.f_string = '{step}_{key}.png'
     img = cv2.imread(image_file_name)
     页 = hoshi本体.hoshi.星(None, brightness_threshold).单图片提取(img)
-    hoshi本体.输出doc.输出(word_file_name, [页])
+    hoshi本体.输出doc.输出(word_file_name, [页], dpi=dpi)
 
 
 def extract_form_image(image_file_name):
@@ -53,7 +53,7 @@ def image_rotation_correction(image_file_name):
 if __name__ == '__main__':
     pdf_to_word('.\hoshi本体\data\SYT 6662.5-2014.pdf', 'final.docx', thread_count=2)
     # pdf_to_word('.\hoshi本体\data\librian.pdf', 'final.docx', 255, thread_count=2)
-    # image_to_word('4.png', 'final.docx')
+    # image_to_word('3.png', 'final.docx')
     
     # print(extract_form('./2.png'))
     # cv2.imwrite('r0.png', image_rotation_correction('./r-3.png'))
