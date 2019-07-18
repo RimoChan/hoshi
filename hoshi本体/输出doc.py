@@ -34,6 +34,7 @@ def 输出页(document, 目录信息, 段落信息, 表格组, 图块组, dpi):
 
         elif x in 目录信息:
             段落 = x
+            x['内容'] = x['内容'].replace('"',' ').replace('“',' ') # 对tesseract的补丁
             document.add_paragraph(f'(目录){x["内容"]}')
 
         elif x in 段落信息:
@@ -42,6 +43,7 @@ def 输出页(document, 目录信息, 段落信息, 表格组, 图块组, dpi):
             if 段落['样式'] == '居中':
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 for i, 行 in enumerate(段落['行组']):
+                    行['内容'] = 行['内容'].replace('"',' ').replace('“',' ') # 对tesseract的补丁
                     行高 = 行['bottom'] - 行['top']
                     if i != len(段落['行组']) - 1:
                         run = p.add_run(行['内容'] + '\n')
@@ -51,11 +53,12 @@ def 输出页(document, 目录信息, 段落信息, 表格组, 图块组, dpi):
                     run.font.size = Pt(字体尺寸)
             else:
                 for i, 行 in enumerate(段落['行组']):
+                    行['内容'] = 行['内容'].replace('"',' ').replace('“',' ') # 对tesseract的补丁
                     行高 = 行['bottom'] - 行['top']
                     if i != len(段落['行组']) - 1:
-                        run = p.add_run(int(行['缩进'] / (行高 * 2)) * ' ' + 行['内容'] + '\n')
+                        run = p.add_run(int(行['缩进'] / 行高 * 2) * ' ' + 行['内容'] + '\n')
                     else:
-                        run = p.add_run(int(行['缩进'] / (行高 * 2)) * ' ' + 行['内容'])
+                        run = p.add_run(int(行['缩进'] / 行高 * 2) * ' ' + 行['内容'])
                     字体尺寸 = round(行高 / dpi * 72)
                     run.font.size = Pt(字体尺寸)
 
